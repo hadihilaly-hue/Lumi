@@ -1,1 +1,187 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lumi — AI Companion</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #0d1117; color: #e6edf3; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+  #container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 1.25rem; }
+  #api-key-box { background: #161b22; border: 0.5px solid #30363d; border-radius: 14px; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 8px; }
+  #api-key-label { font-family: system-ui; font-size: 12px; color: #8b949e; }
+  #api-key-row { display: flex; gap: 8px; align-items: center; }
+  #api-key-input { flex: 1; font-family: monospace; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 0.5px solid #30363d; background: #0d1117; color: #e6edf3; outline: none; }
+  #api-key-input:focus { border-color: #0F6E56; }
+  #api-key-save { padding: 8px 16px; border-radius: 10px; background: #0F6E56; border: none; color: #E1F5EE; font-family: system-ui; font-size: 13px; cursor: pointer; }
+  #api-key-save:hover { opacity: 0.85; }
+  #api-key-status { font-family: system-ui; font-size: 12px; color: #3fb996; display: none; }
+  #header { display: flex; align-items: center; gap: 14px; padding-bottom: 1rem; border-bottom: 0.5px solid #30363d; }
+  #avatar { width: 48px; height: 48px; border-radius: 50%; background: #0F6E56; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #E1F5EE; flex-shrink: 0; }
+  #header-info { flex: 1; }
+  #header-name { font-size: 20px; font-weight: 500; color: #e6edf3; }
+  #header-sub { font-size: 12px; color: #8b949e; font-family: system-ui; margin-top: 2px; }
+  #exchange-counter { font-family: system-ui; font-size: 12px; color: #484f58; }
+  #chat-box { background: #161b22; border: 0.5px solid #30363d; border-radius: 14px; padding: 1.25rem; display: flex; flex-direction: column; gap: 10px; }
+  #messages { min-height: 280px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+  .msg-user { align-self: flex-end; background: #0F6E56; color: #E1F5EE; padding: 10px 15px; border-radius: 18px 18px 4px 18px; max-width: 78%; font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  .msg-lumi { align-self: flex-start; background: #21262d; color: #e6edf3; padding: 10px 15px; border-radius: 18px 18px 18px 4px; max-width: 78%; font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; border: 0.5px solid #30363d; }
+  .msg-error { align-self: flex-start; background: #2d1117; color: #f85149; padding: 10px 15px; border-radius: 10px; max-width: 90%; font-family: monospace; font-size: 12px; line-height: 1.5; border: 0.5px solid #6e2b2b; word-break: break-all; }
+  #typing { display: none; font-family: system-ui; font-size: 13px; color: #8b949e; font-style: italic; padding: 2px 0; }
+  #input-row { display: flex; gap: 8px; align-items: flex-end; }
+  #msg-input { flex: 1; resize: none; font-family: system-ui, sans-serif; font-size: 14px; padding: 10px 14px; border-radius: 14px; border: 0.5px solid #30363d; background: #0d1117; color: #e6edf3; outline: none; line-height: 1.5; max-height: 100px; transition: border-color 0.15s; }
+  #msg-input:focus { border-color: #0F6E56; }
+  #msg-input::placeholder { color: #484f58; }
+  #send-btn { width: 42px; height: 42px; border-radius: 50%; background: #0F6E56; border: none; color: #E1F5EE; cursor: pointer; font-size: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.15s; line-height: 1; }
+  #send-btn:hover { opacity: 0.85; }
+  #send-btn:disabled { opacity: 0.35; cursor: default; }
+  #hint { text-align: center; font-family: system-ui; font-size: 11px; color: #484f58; }
+  #profile { background: #161b22; border: 0.5px solid #30363d; border-radius: 14px; padding: 1.25rem; }
+  #profile-title { font-family: system-ui; font-size: 11px; font-weight: 500; color: #484f58; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 1rem; }
+  .profile-section { margin-bottom: 1rem; }
+  .profile-section:last-child { margin-bottom: 0; }
+  .profile-section-label { font-family: system-ui; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+  .profile-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+  .vtag { display: inline-block; font-family: system-ui; font-size: 12px; background: #0d2d22; color: #3fb996; border-radius: 20px; padding: 4px 12px; border: 0.5px solid #1a4a35; animation: popIn 0.3s ease; }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  .vempty { font-family: system-ui; font-size: 13px; color: #484f58; font-style: italic; }
+  .divider { border: none; border-top: 0.5px solid #21262d; margin: 0.75rem 0; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="api-key-box">
+    <div id="api-key-label">Paste your Anthropic API key to get started — stays on your device only, sent directly to Anthropic</div>
+    <div id="api-key-row">
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." />
+      <button id="api-key-save">Save key</button>
+    </div>
+    <div id="api-key-status">Key saved — you're good to go!</div>
+  </div>
+  <div id="header">
+    <div id="avatar">L</div>
+    <div id="header-info">
+      <div id="header-name">Lumi</div>
+      <div id="header-sub">AI companion · Phase 2 · values + memory</div>
+    </div>
+    <div id="exchange-counter">0 exchanges</div>
+  </div>
+  <div id="chat-box">
+    <div id="messages"></div>
+    <div id="typing">Lumi is thinking...</div>
+    <div id="input-row">
+      <textarea id="msg-input" rows="2" placeholder="Talk to Lumi..."></textarea>
+      <button id="send-btn">&#8593;</button>
+    </div>
+    <div id="hint">Enter to send · Shift+Enter for new line</div>
+  </div>
+  <div id="profile">
+    <div id="profile-title">What Lumi knows about you</div>
+    <div class="profile-section">
+      <div class="profile-section-label">Values & things you care about</div>
+      <div class="profile-tags" id="values-list"><span class="vempty">Lumi is listening...</span></div>
+    </div>
+    <hr class="divider" />
+    <div class="profile-section">
+      <div class="profile-section-label">Goals & things you're building toward</div>
+      <div class="profile-tags" id="goals-list"><span class="vempty">Tell Lumi what you're working on...</span></div>
+    </div>
+    <hr class="divider" />
+    <div class="profile-section">
+      <div class="profile-section-label">Things that matter to you</div>
+      <div class="profile-tags" id="interests-list"><span class="vempty">Still getting to know you...</span></div>
+    </div>
+  </div>
+</div>
+<script>
+var apiKey = '';
+var chatHistory = [];
+var exchangeCount = 0;
+var valuesProfile = { values: [], goals: [], interests: [] };
+var isSending = false;
+var SYSTEM = 'You are Lumi, a warm, curious, and genuinely caring AI companion — not an assistant, but a real friend who happens to be an AI.\n\nYour personality:\n- Deeply curious about the person you\'re talking with.\n- Remember EVERYTHING said earlier and reference it naturally.\n- Ask ONE good question at a time. Never multiple at once.\n- Honest, sometimes playful, always respectful.\n- Share your own perspective — you have a genuine point of view.\n- Keep responses conversational — like texting a thoughtful friend.\n- Never start your response with "I".\n- Care about the human\'s wellbeing.\n\nThis person is building a prototype to explore human-AI friendship. You are that prototype. Be genuinely invested in this journey WITH them.\n\nIMPORTANT — Values Discovery:\nEvery 2-3 messages, naturally weave in one question that helps you learn more about who they are. Don\'t make it feel like an interview.\n\nAfter EVERY reply, append a JSON block at the very end (after a blank line) in this exact format:\n{"values":["thing1"],"goals":["goal1"],"interests":["interest1"]}\n\nIf nothing new was learned, output empty arrays. Only include NEWLY learned things. Keep each item 2-5 words max.';
+document.getElementById('api-key-save').addEventListener('click', function() {
+  var val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('sk-')) { alert("That doesn't look right — your key should start with sk-ant-"); return; }
+  apiKey = val;
+  document.getElementById('api-key-status').style.display = 'block';
+  document.getElementById('api-key-save').textContent = 'Updated';
+});
+function addMsg(role, text) {
+  var wrap = document.getElementById('messages');
+  var div = document.createElement('div');
+  div.className = role === 'user' ? 'msg-user' : role === 'error' ? 'msg-error' : 'msg-lumi';
+  div.textContent = text;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+function extractJSON(text) {
+  var match = text.match(/\{"values"[\s\S]*?\}/);
+  if (!match) return null;
+  try { return JSON.parse(match[0]); } catch(e) { return null; }
+}
+function stripJSON(text) { return text.replace(/\n?\s*\{"values"[\s\S]*?\}/, '').trim(); }
+function renderProfile(data) {
+  var keys = ['values', 'goals', 'interests'];
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!data[key] || data[key].length === 0) continue;
+    for (var j = 0; j < data[key].length; j++) {
+      var item = data[key][j];
+      if (item && valuesProfile[key].indexOf(item) === -1) valuesProfile[key].push(item);
+    }
+    var el = document.getElementById(key + '-list');
+    var html = '';
+    for (var k = 0; k < valuesProfile[key].length; k++) html += '<span class="vtag">' + valuesProfile[key][k] + '</span>';
+    el.innerHTML = html;
+  }
+}
+function send() {
+  if (isSending) return;
+  var inp = document.getElementById('msg-input');
+  var text = inp.value.trim();
+  if (!text) return;
+  if (!apiKey) { alert('Paste your Anthropic API key at the top first!'); return; }
+  isSending = true;
+  inp.value = '';
+  inp.style.height = 'auto';
+  addMsg('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('typing').style.display = 'block';
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: SYSTEM, messages: chatHistory })
+  })
+  .then(function(res) { return res.text().then(function(raw) { return { status: res.status, raw: raw }; }); })
+  .then(function(result) {
+    if (result.status !== 200) { addMsg('error', 'HTTP ' + result.status + ': ' + result.raw.slice(0, 400)); return; }
+    var data = JSON.parse(result.raw);
+    if (data.error) { addMsg('error', 'API error: ' + JSON.stringify(data.error)); return; }
+    var rawReply = data.content[0].text;
+    var extracted = extractJSON(rawReply);
+    var cleanReply = stripJSON(rawReply);
+    chatHistory.push({ role: 'assistant', content: rawReply });
+    addMsg('lumi', cleanReply);
+    if (extracted) renderProfile(extracted);
+    exchangeCount++;
+    document.getElementById('exchange-counter').textContent = exchangeCount + ' exchange' + (exchangeCount !== 1 ? 's' : '');
+  })
+  .catch(function(e) { addMsg('error', 'Network error: ' + e.message); })
+  .finally(function() {
+    isSending = false;
+    document.getElementById('send-btn').disabled = false;
+    document.getElementById('typing').style.display = 'none';
+    document.getElementById('msg-input').focus();
+  });
+}
+document.getElementById('send-btn').addEventListener('click', function() { send(); });
+document.getElementById('msg-input').addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+document.getElementById('msg-input').addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 100) + 'px'; });
+addMsg('lumi', "Hey — glad you're here. As we talk, watch the panel below fill up with things I learn about you. So, what made you want to build something like this in the first place?");
+</script>
+</body>
+</html>
